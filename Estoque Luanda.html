@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estoque Luanda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: resumo no topo, abas, grade de peças; detalhe em painel lateral */
+  --bg:#f2f1ee; --surface:#ffffff; --sunk:#f7f6f3; --ink:#1c1f21; --muted:#676c70; --line:#e1dfda;
+  --accent:#1f5f5b; --accent-ink:#ffffff; --accent-soft:#e2eeec;
+  --ok:#2d7a4c; --ok-soft:#e3f1e8; --warn:#9a620c; --warn-soft:#fbefd9; --bad:#b0372b; --bad-soft:#f8e2de;
+  --display:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --radius:12px; --shadow:0 1px 2px rgba(20,24,26,.06),0 4px 14px rgba(20,24,26,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141718; --surface:#1d2123; --sunk:#181b1d; --ink:#ecebe8; --muted:#9aa0a3; --line:#2e3437;
+    --accent:#5fb3aa; --accent-ink:#0e1a19; --accent-soft:#1f3432;
+    --ok:#6cc48f; --ok-soft:#1c3226; --warn:#e5ad52; --warn-soft:#3a2d16; --bad:#ef7f72; --bad-soft:#3d201c;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141718; --surface:#1d2123; --sunk:#181b1d; --ink:#ecebe8; --muted:#9aa0a3; --line:#2e3437;
+  --accent:#5fb3aa; --accent-ink:#0e1a19; --accent-soft:#1f3432;
+  --ok:#6cc48f; --ok-soft:#1c3226; --warn:#e5ad52; --warn-soft:#3a2d16; --bad:#ef7f72; --bad-soft:#3d201c;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+@media (max-width:480px){.wrap{padding:0 16px}}
+
+/* topo */
+header.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:38px;height:38px;border-radius:8px;display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px;background:var(--accent)}
+.mark span{background:var(--accent-soft);border-radius:2px}
+.mark span:nth-child(2),.mark span:nth-child(3){background:var(--surface);opacity:.9}
+.brand h1{font-size:20px;font-weight:800}
+.brand p{margin:0;color:var(--muted);font-size:13px}
+.chip-demo{font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:5px 10px;border-radius:999px}
+
+/* resumo */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px 0 4px}
+@media (max-width:760px){.summary{grid-template-columns:repeat(2,1fr)}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:2px;text-align:left;cursor:default}
+button.tile{cursor:pointer}
+button.tile:hover{border-color:var(--accent)}
+.tile .lbl{font-size:12.5px;color:var(--muted);font-weight:500}
+.tile .num{font-family:var(--display);font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.tile .sub{font-size:12.5px;color:var(--muted)}
+.tile.warn .num{color:var(--warn)} .tile.bad .num{color:var(--bad)}
+
+/* abas */
+.tabs{display:flex;gap:4px;margin-top:18px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{background:none;border:0;padding:10px 14px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;display:flex;gap:8px;align-items:center}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab .badge{background:var(--bad-soft);color:var(--bad);font-size:12px;border-radius:999px;padding:1px 8px}
+.tab:focus-visible,.btn:focus-visible,.card:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.fchip:focus-visible,button.tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* barra de ferramentas */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:16px 0}
+.search{flex:1 1 240px;position:relative}
+.search input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+select.sel{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.fchips{display:flex;gap:6px;flex-wrap:wrap}
+.fchip{border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:999px;font-size:13.5px;font-weight:500;cursor:pointer}
+.fchip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn{border:1px solid var(--line);background:var(--surface);padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.in{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.btn.out{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.btn.sm{padding:7px 11px;font-size:13.5px}
+
+/* grade */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;padding-bottom:40px}
+@media (max-width:480px){.grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;cursor:pointer;text-align:left;padding:0;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+.card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
+.ph{aspect-ratio:4/3;position:relative;background:var(--sunk) center/cover no-repeat;border-bottom:1px solid var(--line)}
+.ph .pill{position:absolute;top:8px;left:8px}
+.ph .fmt{position:absolute;bottom:8px;right:8px;background:rgba(20,22,24,.72);color:#fff;font-size:11.5px;font-weight:600;padding:3px 7px;border-radius:6px;font-variant-numeric:tabular-nums}
+.cbody{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px;flex:1}
+.cname{font-family:var(--display);font-weight:700;font-size:15.5px;line-height:1.25}
+.cmeta{font-size:12.5px;color:var(--muted)}
+.cstock{margin-top:auto;padding-top:8px;display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums}
+.cstock b{font-family:var(--display);font-size:18px}
+.cstock span{font-size:12.5px;color:var(--muted)}
+.bar{height:5px;border-radius:5px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;border-radius:5px}
+@media (max-width:480px){.cbody{padding:10px}.cname{font-size:14px}.cstock b{font-size:16px}}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.in{background:var(--ok-soft);color:var(--ok)}
+.pill.out{background:var(--bad-soft);color:var(--bad)}
+.ph .pill.ok{background:rgba(227,241,232,.95);color:#2d7a4c}
+.ph .pill.warn{background:rgba(251,239,217,.95);color:#9a620c}
+.ph .pill.bad{background:rgba(248,226,222,.95);color:#b0372b}
+
+.empty{padding:40px 20px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius)}
+
+/* lista de movimentações */
+.list{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:40px}
+.row{display:grid;grid-template-columns:92px 84px 1.4fr 110px 1.3fr 90px;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);font-size:14px}
+.row:last-child{border-bottom:0}
+.row.head{background:var(--sunk);font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.row .num{font-variant-numeric:tabular-nums;font-weight:600}
+.row .muted{color:var(--muted);font-size:13px}
+.prodcell{display:flex;align-items:center;gap:10px;min-width:0}
+.prodcell .sw{width:34px;height:34px;border-radius:6px;flex:none;background:center/cover;border:1px solid var(--line)}
+.prodcell div{min-width:0}
+.prodcell b{display:block;font-weight:600;overflow-wrap:anywhere}
+@media (max-width:820px){
+  .row{grid-template-columns:1fr auto;gap:4px 12px}
+  .row.head{display:none}
+  .row > :nth-child(1){grid-column:1;order:3;color:var(--muted);font-size:12.5px}
+  .row > :nth-child(2){grid-column:2;order:1;justify-self:end}
+  .row > :nth-child(3){grid-column:1;order:0;grid-row:1}
+  .row > :nth-child(4){grid-column:2;order:2;justify-self:end}
+  .row > :nth-child(5){grid-column:1;order:4}
+  .row > :nth-child(6){grid-column:2;order:5;justify-self:end}
+}
+
+/* reposição */
+.restock{display:flex;flex-direction:column;gap:10px;padding-bottom:40px}
+.ritem{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:var(--radius);padding:12px 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.ritem.bad{border-left-color:var(--bad)}
+.ritem .sw{width:56px;height:56px;border-radius:8px;background:center/cover;flex:none;border:1px solid var(--line)}
+.ritem .info{flex:1 1 220px;min-width:0}
+.ritem .info b{font-family:var(--display);font-size:15.5px}
+.ritem .nums{display:flex;gap:20px;font-variant-numeric:tabular-nums}
+.ritem .nums div{display:flex;flex-direction:column}
+.ritem .nums small{color:var(--muted);font-size:12px}
+.ritem .nums strong{font-family:var(--display);font-size:17px}
+.note{font-size:13.5px;color:var(--muted);margin:0 0 12px}
+
+/* painel lateral */
+.scrim{position:fixed;inset:0;background:rgba(10,12,13,.45);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(460px,100%);background:var(--surface);z-index:21;transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.15)}
+.drawer.on{transform:none}
+.dhead{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);gap:10px}
+.dhead h2{font-size:18px}
+.x{background:none;border:0;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:22px;line-height:1;color:var(--muted);flex:none}
+.x:hover{background:var(--sunk)}
+.dbody{overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:18px}
+.dimg{aspect-ratio:16/10;border-radius:10px;background:var(--sunk) center/cover;border:1px solid var(--line);position:relative}
+.dstock{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.dstock .big{font-family:var(--display);font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.dstock .big small{font-size:15px;font-weight:600;color:var(--muted);margin-left:4px}
+.dstock .m2{color:var(--muted);font-size:13.5px;margin-top:4px}
+.dactions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.specs div{background:var(--surface);padding:9px 12px}
+.specs small{display:block;color:var(--muted);font-size:12px}
+.specs span{font-weight:600;font-variant-numeric:tabular-nums}
+.hist h3{font-size:14px;margin-bottom:8px}
+.hrow{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.hrow:last-child{border-bottom:0}
+.hrow .who{color:var(--muted);font-size:12.5px}
+.hrow .q{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hrow .q.in{color:var(--ok)} .hrow .q.out{color:var(--bad)}
+
+/* modal */
+.modal{position:fixed;inset:0;display:grid;place-items:center;z-index:30;padding:16px;pointer-events:none;opacity:0;transition:opacity .15s}
+.modal.on{opacity:1;pointer-events:auto}
+.mbox{background:var(--surface);border-radius:14px;width:min(480px,100%);max-height:calc(100% - 32px);overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.mbox form{padding:18px;display:flex;flex-direction:column;gap:12px}
+.mhead{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 0}
+.mhead h2{font-size:18px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:13px;font-weight:600}
+.field input,.field select,.field textarea{padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--sunk);width:100%}
+.field textarea{resize:vertical;min-height:60px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.calc{background:var(--accent-soft);color:var(--ink);padding:10px 12px;border-radius:9px;font-size:13.5px;font-variant-numeric:tabular-nums}
+.err{color:var(--bad);font-size:13.5px;font-weight:600;min-height:0}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
+.mprod{display:flex;gap:10px;align-items:center;background:var(--sunk);padding:8px;border-radius:9px}
+.mprod .sw{width:40px;height:40px;border-radius:6px;background:center/cover;flex:none}
+.mprod b{display:block;font-size:14px}
+.mprod small{color:var(--muted);font-size:12.5px}
+
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;font-weight:600;font-size:14px;opacity:0;transition:.2s;z-index:40;pointer-events:none;max-width:calc(100% - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.foot{color:var(--muted);font-size:12.5px;padding:0 0 30px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <div>
+        <h1>Luanda</h1>
+        <p>Controle de estoque · Representações e Comércio</p>
+      </div>
+    </div>
+    <span class="chip-demo">Protótipo · dados de exemplo</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="summary" id="summary" aria-label="Resumo do estoque"></section>
+
+  <nav class="tabs" role="tablist" aria-label="Seções">
+    <button class="tab" role="tab" id="tab-catalogo" data-view="catalogo" aria-selected="true">Catálogo</button>
+    <button class="tab" role="tab" id="tab-mov" data-view="mov" aria-selected="false">Entradas e saídas</button>
+    <button class="tab" role="tab" id="tab-repor" data-view="repor" aria-selected="false">Repor <span class="badge" id="badge-repor"></span></button>
+  </nav>
+
+  <section id="view-catalogo">
+    <div class="toolbar">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Buscar por nome, referência ou marca" aria-label="Buscar produto">
+      </div>
+      <select class="sel" id="f-marca" aria-label="Filtrar por marca"></select>
+      <div class="fchips" id="f-status" role="group" aria-label="Filtrar por situação">
+        <button class="fchip" data-s="todos" aria-pressed="true">Todos</button>
+        <button class="fchip" data-s="ok" aria-pressed="false">Em estoque</button>
+        <button class="fchip" data-s="warn" aria-pressed="false">Estoque baixo</button>
+        <button class="fchip" data-s="bad" aria-pressed="false">Esgotado</button>
+      </div>
+      <button class="btn primary" id="btn-novo">+ Novo produto</button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="view-mov" hidden>
+    <div class="toolbar">
+      <div class="fchips" id="f-tipo" role="group" aria-label="Filtrar por tipo">
+        <button class="fchip" data-t="todos" aria-pressed="true">Todas</button>
+        <button class="fchip" data-t="entrada" aria-pressed="false">Entradas</button>
+        <button class="fchip" data-t="saida" aria-pressed="false">Saídas</button>
+      </div>
+    </div>
+    <div class="list" id="movlist"></div>
+  </section>
+
+  <section id="view-repor" hidden>
+    <div class="toolbar"><p class="note" style="margin:0">Produtos abaixo do estoque mínimo. A sugestão de pedido leva o estoque ao dobro do mínimo.</p></div>
+    <div class="restock" id="restock"></div>
+  </section>
+
+  <p class="foot">Protótipo para validar a ideia. Os produtos, marcas e clientes são fictícios e as alterações somem ao recarregar a página.</p>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="d-title">
+  <div class="dhead"><h2 id="d-title">Produto</h2><button class="x" id="d-close" aria-label="Fechar">×</button></div>
+  <div class="dbody" id="d-body"></div>
+</aside>
+
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <div class="mhead"><h2 id="m-title"></h2><button class="x" id="m-close" aria-label="Fechar">×</button></div>
+    <form id="m-form" novalidate></form>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+const HOJE = "2026-11-12";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nf = (n, d=0) => Number(n).toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fdata = iso => { const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; };
+
+/* ---------- texturas das peças (substituem as fotos no protótipo) ---------- */
+function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const texCache = {};
+function textura(p){
+  if (p.foto) return p.foto;
+  const key = p.id + p.textura;
+  if (texCache[key]) return texCache[key];
+  const W = 360, H = 270, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d"), r = rng(p.id * 977 + 13), [c0, c1, c2] = p.cores;
+  g.fillStyle = c0; g.fillRect(0,0,W,H);
+  if (p.textura === "marmore"){
+    const grd = g.createLinearGradient(0,0,W,H); grd.addColorStop(0,"rgba(255,255,255,.25)"); grd.addColorStop(1,"rgba(0,0,0,.04)");
+    g.fillStyle = grd; g.fillRect(0,0,W,H);
+    for (let i=0;i<7;i++){
+      g.beginPath(); let x = r()*W*0.3 - 40, y = r()*H;
+      g.moveTo(x,y);
+      for (let k=0;k<5;k++){ const nx = x + 70 + r()*60, ny = y + (r()-.5)*120; g.quadraticCurveTo(x + (r()*60), y + (r()-.5)*90, nx, ny); x = nx; y = ny; }
+      g.strokeStyle = i < 2 ? c1 : (c2 || c1); g.globalAlpha = i < 2 ? .75 : .3 + r()*.3; g.lineWidth = i < 2 ? 1.6 + r()*2 : .6 + r();
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+  } else if (p.textura === "madeira"){
+    const plank = H/4;
+    for (let k=0;k<4;k++){
+      g.fillStyle = k%2 ? c0 : c2 || c0; g.fillRect(0,k*plank,W,plank);
+      for (let i=0;i<34;i++){
+        g.beginPath(); const y0 = k*plank + r()*plank; g.moveTo(0,y0);
+        for (let x=0;x<=W;x+=30) g.lineTo(x, y0 + Math.sin(x/50 + i)*2.2 + (r()-.5)*1.4);
+        g.strokeStyle = c1; g.globalAlpha = .12 + r()*.22; g.lineWidth = .6 + r()*1.4; g.stroke();
+      }
+      g.globalAlpha = .35; g.fillStyle = "#000"; g.fillRect(0,(k+1)*plank-1,W,1.2);
+      const off = r()*W; g.fillRect(off,k*plank,1.2,plank);
+    }
+    g.globalAlpha = 1;
+  } else if (p.textura === "cimento"){
+    for (let i=0;i<5200;i++){ g.fillStyle = r() > .5 ? c1 : (c2||"#fff"); g.globalAlpha = r()*.18; g.fillRect(r()*W, r()*H, 1+r()*2, 1+r()*2); }
+    for (let i=0;i<6;i++){ const x=r()*W,y=r()*H,rad=40+r()*90; const gr=g.createRadialGradient(x,y,0,x,y,rad); gr.addColorStop(0,c1); gr.addColorStop(1,"transparent"); g.globalAlpha=.12; g.fillStyle=gr; g.fillRect(0,0,W,H); }
+    g.globalAlpha = 1;
+  } else if (p.textura === "pedra"){
+    for (let i=0;i<40;i++){ const x=r()*W,y=r()*H,rad=8+r()*40; const gr=g.createRadialGradient(x,y,0,x,y,rad); gr.addColorStop(0, r()>.5?c1:(c2||c1)); gr.addColorStop(1,"transparent"); g.globalAlpha=.25+r()*.3; g.fillStyle=gr; g.fillRect(x-rad,y-rad,rad*2,rad*2); }
+    for (let i=0;i<2500;i++){ g.fillStyle = c1; g.globalAlpha = r()*.25; g.fillRect(r()*W, r()*H, 1.3, 1.3); }
+    g.globalAlpha = 1;
+  } else if (p.textura === "hexagonal"){
+    const s = 30, h = Math.sqrt(3)*s;
+    for (let row=-1; row<H/h+1; row++) for (let col=-1; col<W/(s*1.5)+1; col++){
+      const cx = col*s*1.5, cy = row*h + (col%2 ? h/2 : 0);
+      g.beginPath(); for (let a=0;a<6;a++){ const ang=Math.PI/3*a; g.lineTo(cx+s*.94*Math.cos(ang), cy+s*.94*Math.sin(ang)); } g.closePath();
+      g.fillStyle = [c0,c1,c2][Math.floor(r()*3)] || c0; g.fill();
+    }
+  } else {
+    const grd = g.createLinearGradient(0,0,W,H); grd.addColorStop(0,c0); grd.addColorStop(1,c1); g.fillStyle = grd; g.fillRect(0,0,W,H);
+  }
+  /* reflexo do acabamento */
+  if (p.acabamento === "Polido"){ const gl = g.createLinearGradient(0,0,W,H*.8); gl.addColorStop(0,"rgba(255,255,255,0)"); gl.addColorStop(.45,"rgba(255,255,255,.28)"); gl.addColorStop(.55,"rgba(255,255,255,0)"); g.fillStyle = gl; g.fillRect(0,0,W,H); }
+  return texCache[key] = c.toDataURL("image/jpeg", .85);
+}
+
+/* ---------- dados de exemplo ---------- */
+let produtos = [
+  {id:1, nome:"Calacatta Lumière", marca:"Cerâmica Aurora", ref:"AUR-6012P", formato:"60×120 cm", acabamento:"Polido", uso:"Piso e parede · interno", textura:"marmore", cores:["#f3f1ec","#9c9385","#c9c1b3"], m2cx:1.44, caixas:86, minimo:30, local:"Galpão · Rua A3"},
+  {id:2, nome:"Nero Marquina", marca:"Cerâmica Aurora", ref:"AUR-9090P", formato:"90×90 cm", acabamento:"Polido", uso:"Piso e parede · interno", textura:"marmore", cores:["#1f2022","#e8e6e1","#55575a"], m2cx:1.62, caixas:12, minimo:20, local:"Galpão · Rua A4"},
+  {id:3, nome:"Carvalho Nórdico", marca:"Vale Revestimentos", ref:"VAL-2012A", formato:"20×120 cm", acabamento:"Acetinado", uso:"Piso · interno", textura:"madeira", cores:["#c9a57d","#7a5634","#bf9b72"], m2cx:1.44, caixas:140, minimo:40, local:"Galpão · Rua B1"},
+  {id:4, nome:"Freijó Natural", marca:"Vale Revestimentos", ref:"VAL-2612N", formato:"26×120 cm", acabamento:"Natural", uso:"Piso · interno e externo", textura:"madeira", cores:["#a57a52","#5b3b20","#9b7049"], m2cx:1.25, caixas:0, minimo:25, local:"Galpão · Rua B2"},
+  {id:5, nome:"Cimento Urbano Grafite", marca:"Porto Sul Cerâmica", ref:"PS-1212N", formato:"120×120 cm", acabamento:"Natural", uso:"Piso · interno e externo", textura:"cimento", cores:["#6d7071","#3e4142","#9ea1a1"], m2cx:2.88, caixas:38, minimo:15, local:"Galpão · Rua C1"},
+  {id:6, nome:"Cimento Urbano Areia", marca:"Porto Sul Cerâmica", ref:"PS-1212A", formato:"120×120 cm", acabamento:"Acetinado", uso:"Piso e parede · interno", textura:"cimento", cores:["#cfc6b8","#a39888","#e9e3d8"], m2cx:2.88, caixas:9, minimo:15, local:"Galpão · Rua C1"},
+  {id:7, nome:"Pedra Miracema Off", marca:"Porto Sul Cerâmica", ref:"PS-6060R", formato:"60×60 cm", acabamento:"Antiderrapante", uso:"Área externa e piscina", textura:"pedra", cores:["#d8d2c4","#9d937f","#b8ae99"], m2cx:1.44, caixas:210, minimo:60, local:"Pátio · Box 2"},
+  {id:8, nome:"Basalto Escuro", marca:"Vale Revestimentos", ref:"VAL-6060R", formato:"60×60 cm", acabamento:"Antiderrapante", uso:"Área externa e garagem", textura:"pedra", cores:["#4a4c4d","#252728","#6c6e6f"], m2cx:1.44, caixas:52, minimo:30, local:"Pátio · Box 3"},
+  {id:9, nome:"Statuario Bianco", marca:"Cerâmica Aurora", ref:"AUR-1227P", formato:"120×270 cm", acabamento:"Polido", uso:"Parede e bancada · lastra", textura:"marmore", cores:["#f7f6f3","#7f7a72","#bdb8af"], m2cx:3.24, caixas:4, minimo:6, local:"Galpão · Cavalete 1"},
+  {id:10, nome:"Hexa Terracota", marca:"Ateliê Ladrilho", ref:"ATL-HX20", formato:"20×23 cm", acabamento:"Acetinado", uso:"Piso e parede · interno", textura:"hexagonal", cores:["#b9653f","#a35634","#c8744d"], m2cx:0.98, caixas:64, minimo:20, local:"Galpão · Rua D1"},
+  {id:11, nome:"Branco Acetinado Liso", marca:"Porto Sul Cerâmica", ref:"PS-3090B", formato:"30×90 cm", acabamento:"Acetinado", uso:"Parede · interno", textura:"liso", cores:["#f2f1ee","#dedcd6"], m2cx:1.62, caixas:180, minimo:50, local:"Galpão · Rua D2"},
+  {id:12, nome:"Verde Musgo Liso", marca:"Ateliê Ladrilho", ref:"ATL-7525V", formato:"7,5×25 cm", acabamento:"Brilhante", uso:"Parede · interno", textura:"liso", cores:["#5d7a5c","#3f5a40"], m2cx:0.56, caixas:0, minimo:10, local:"Galpão · Rua D3"}
+];
+let mov = [
+  {id:1, tipo:"saida", prod:1, cx:24, data:"2026-11-11", parte:"Construtora Mar Azul Ltda", doc:"CNPJ 12.345.678/0001-90", nf:"NF 4821"},
+  {id:2, tipo:"entrada", prod:7, cx:120, data:"2026-11-10", parte:"Porto Sul Cerâmica (fábrica)", doc:"Pedido 7733", nf:"NF 99120"},
+  {id:3, tipo:"saida", prod:6, cx:18, data:"2026-11-10", parte:"Ateliê Interiores Recife ME", doc:"CNPJ 98.765.432/0001-10", nf:"NF 4820"},
+  {id:4, tipo:"saida", prod:2, cx:16, data:"2026-11-08", parte:"Revest Casa Comércio Ltda", doc:"CNPJ 22.333.444/0001-55", nf:"NF 4815"},
+  {id:5, tipo:"saida", prod:4, cx:31, data:"2026-11-06", parte:"Construtora Mar Azul Ltda", doc:"CNPJ 12.345.678/0001-90", nf:"NF 4809"},
+  {id:6, tipo:"entrada", prod:3, cx:80, data:"2026-11-05", parte:"Vale Revestimentos (fábrica)", doc:"Pedido 5120", nf:"NF 31455"},
+  {id:7, tipo:"saida", prod:12, cx:14, data:"2026-11-04", parte:"Ateliê Interiores Recife ME", doc:"CNPJ 98.765.432/0001-10", nf:"NF 4803"},
+  {id:8, tipo:"saida", prod:9, cx:3, data:"2026-11-03", parte:"Marmoraria Boa Viagem Ltda", doc:"CNPJ 33.111.222/0001-44", nf:"NF 4799"},
+  {id:9, tipo:"saida", prod:5, cx:12, data:"2026-10-30", parte:"Engeplan Obras Ltda", doc:"CNPJ 44.555.666/0001-77", nf:"NF 4788"},
+  {id:10, tipo:"entrada", prod:1, cx:60, data:"2026-10-28", parte:"Cerâmica Aurora (fábrica)", doc:"Pedido 8841", nf:"NF 77301"},
+  {id:11, tipo:"saida", prod:3, cx:40, data:"2026-10-24", parte:"Engeplan Obras Ltda", doc:"CNPJ 44.555.666/0001-77", nf:"NF 4772"},
+  {id:12, tipo:"saida", prod:11, cx:35, data:"2026-10-21", parte:"Revest Casa Comércio Ltda", doc:"CNPJ 22.333.444/0001-55", nf:"NF 4765"}
+];
+let nextMov = 13, nextProd = 13;
+
+const status = p => p.caixas <= 0 ? "bad" : p.caixas <= p.minimo ? "warn" : "ok";
+const STATUS_TXT = {ok:"Em estoque", warn:"Estoque baixo", bad:"Esgotado"};
+const prodById = id => produtos.find(p => p.id === id);
+
+/* ---------- estado da tela ---------- */
+let view = "catalogo", fStatus = "todos", fTipo = "todos", fMarca = "", q = "", aberto = null;
+
+function renderSummary(){
+  const baixo = produtos.filter(p => status(p) === "warn").length;
+  const esg = produtos.filter(p => status(p) === "bad").length;
+  const m2 = produtos.reduce((s,p) => s + p.caixas * p.m2cx, 0);
+  const mes = HOJE.slice(0,7);
+  const saidasMes = mov.filter(m => m.tipo === "saida" && m.data.startsWith(mes));
+  const cxMes = saidasMes.reduce((s,m) => s + m.cx, 0);
+  const m2Mes = saidasMes.reduce((s,m) => s + m.cx * (prodById(m.prod)?.m2cx || 0), 0);
+  $("#summary").innerHTML = `
+    <div class="tile"><span class="lbl">Em estoque hoje</span><span class="num">${nf(m2)} m²</span><span class="sub">${produtos.length} produtos cadastrados</span></div>
+    <div class="tile"><span class="lbl">Saídas em novembro</span><span class="num">${nf(cxMes)} cx</span><span class="sub">${nf(m2Mes,1)} m² vendidos</span></div>
+    <button class="tile warn" data-go="warn"><span class="lbl">Estoque baixo</span><span class="num">${baixo}</span><span class="sub">abaixo do mínimo</span></button>
+    <button class="tile bad" data-go="bad"><span class="lbl">Esgotados</span><span class="num">${esg}</span><span class="sub">precisam de pedido</span></button>`;
+  const n = baixo + esg; $("#badge-repor").textContent = n; $("#badge-repor").hidden = !n;
+}
+
+function renderMarcas(){
+  const marcas = [...new Set(produtos.map(p => p.marca))].sort();
+  $("#f-marca").innerHTML = `<option value="">Todas as marcas</option>` + marcas.map(m => `<option ${m===fMarca?"selected":""}>${esc(m)}</option>`).join("");
+}
+
+function barra(p){
+  const pct = Math.min(100, p.caixas / (p.minimo * 3) * 100);
+  const col = {ok:"var(--ok)", warn:"var(--warn)", bad:"var(--bad)"}[status(p)];
+  return `<div class="bar" aria-hidden="true"><i style="width:${Math.max(pct, p.caixas?4:0)}%;background:${col}"></i></div>`;
+}
+
+function renderGrid(){
+  const t = q.trim().toLowerCase();
+  const lista = produtos.filter(p =>
+    (fStatus === "todos" || status(p) === fStatus) &&
+    (!fMarca || p.marca === fMarca) &&
+    (!t || (p.nome + " " + p.ref + " " + p.marca + " " + p.acabamento + " " + p.formato).toLowerCase().includes(t)));
+  if (!lista.length){ $("#grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Nenhum produto encontrado com esses filtros.</div>`; return; }
+  $("#grid").innerHTML = lista.map(p => { const s = status(p); return `
+    <button class="card" data-id="${p.id}" aria-label="${esc(p.nome)}, ${STATUS_TXT[s]}, ${p.caixas} caixas">
+      <div class="ph" style="background-image:url(${textura(p)})"><span class="pill ${s}">${STATUS_TXT[s]}</span><span class="fmt">${esc(p.formato)}</span></div>
+      <div class="cbody">
+        <span class="cname">${esc(p.nome)}</span>
+        <span class="cmeta">${esc(p.marca)} · ${esc(p.acabamento)}</span>
+        <div class="cstock"><b>${nf(p.caixas)} cx</b><span>${nf(p.caixas*p.m2cx,1)} m²</span></div>
+        ${barra(p)}
+      </div>
+    </button>`; }).join("");
+}
+
+function prodCell(p){
+  return `<div class="prodcell"><span class="sw" style="background-image:url(${textura(p)})"></span><div><b>${esc(p.nome)}</b><span class="muted">${esc(p.ref)}</span></div></div>`;
+}
+
+function renderMov(){
+  const lista = mov.filter(m => fTipo === "todos" || m.tipo === fTipo).sort((a,b) => b.data.localeCompare(a.data) || b.id - a.id);
+  if (!lista.length){ $("#movlist").innerHTML = `<div class="empty" style="border:0">Nenhuma movimentação registrada.</div>`; return; }
+  $("#movlist").innerHTML = `<div class="row head"><span>Data</span><span>Tipo</span><span>Produto</span><span>Quantidade</span><span>Cliente / fornecedor</span><span>Nota</span></div>` +
+    lista.map(m => { const p = prodById(m.prod); if (!p) return ""; return `
+      <div class="row">
+        <span>${fdata(m.data)}</span>
+        <span><span class="pill ${m.tipo==="entrada"?"in":"out"}">${m.tipo==="entrada"?"Entrada":"Saída"}</span></span>
+        ${prodCell(p)}
+        <span class="num">${m.tipo==="entrada"?"+":"−"}${nf(m.cx)} cx<br><span class="muted">${nf(m.cx*p.m2cx,1)} m²</span></span>
+        <span>${esc(m.parte)}<br><span class="muted">${esc(m.doc)}</span></span>
+        <span class="muted">${esc(m.nf||"—")}</span>
+      </div>`; }).join("");
+}
+
+function renderRepor(){
+  const lista = produtos.filter(p => status(p) !== "ok").sort((a,b) => (a.caixas/a.minimo) - (b.caixas/b.minimo));
+  if (!lista.length){ $("#restock").innerHTML = `<div class="empty">Tudo certo: nenhum produto abaixo do mínimo.</div>`; return; }
+  $("#restock").innerHTML = lista.map(p => { const s = status(p), sug = p.minimo*2 - p.caixas; return `
+    <div class="ritem ${s}">
+      <span class="sw" style="background-image:url(${textura(p)})"></span>
+      <div class="info"><b>${esc(p.nome)}</b><div class="cmeta">${esc(p.marca)} · ${esc(p.ref)} · ${esc(p.formato)}</div><span class="pill ${s}" style="margin-top:6px">${STATUS_TXT[s]}</span></div>
+      <div class="nums">
+        <div><small>Tem</small><strong>${nf(p.caixas)} cx</strong></div>
+        <div><small>Mínimo</small><strong>${nf(p.minimo)} cx</strong></div>
+        <div><small>Pedir</small><strong>${nf(sug)} cx</strong><small>${nf(sug*p.m2cx,1)} m²</small></div>
+      </div>
+      <button class="btn in sm" data-entrada="${p.id}">Registrar entrada</button>
+    </div>`; }).join("");
+}
+
+function renderDrawer(){
+  const p = prodById(aberto); if (!p) return;
+  const s = status(p);
+  const hist = mov.filter(m => m.prod === p.id).sort((a,b) => b.data.localeCompare(a.data) || b.id - a.id);
+  $("#d-title").textContent = p.nome;
+  $("#d-body").innerHTML = `
+    <div class="dimg" style="background-image:url(${textura(p)})"></div>
+    <div class="dstock">
+      <div><div class="big">${nf(p.caixas)}<small>caixas</small></div><div class="m2">${nf(p.caixas*p.m2cx,2)} m² · mínimo ${nf(p.minimo)} cx</div></div>
+      <span class="pill ${s}">${STATUS_TXT[s]}</span>
+    </div>
+    <div class="dactions">
+      <button class="btn in" data-entrada="${p.id}">+ Registrar entrada</button>
+      <button class="btn out" data-saida="${p.id}" ${p.caixas?"":"disabled"}>− Registrar saída</button>
+    </div>
+    <div class="specs">
+      <div><small>Marca</small><span>${esc(p.marca)}</span></div>
+      <div><small>Referência</small><span>${esc(p.ref)}</span></div>
+      <div><small>Formato</small><span>${esc(p.formato)}</span></div>
+      <div><small>Acabamento</small><span>${esc(p.acabamento)}</span></div>
+      <div><small>m² por caixa</small><span>${nf(p.m2cx,2)}</span></div>
+      <div><small>Onde fica</small><span>${esc(p.local||"—")}</span></div>
+      <div style="grid-column:1/-1"><small>Uso indicado</small><span>${esc(p.uso||"—")}</span></div>
+    </div>
+    <div class="hist"><h3>Histórico</h3>${hist.length ? hist.map(m => `
+      <div class="hrow"><div>${fdata(m.data)} · ${esc(m.parte)}<div class="who">${esc(m.doc)}${m.nf?" · "+esc(m.nf):""}</div></div><span class="q ${m.tipo==="entrada"?"in":"out"}">${m.tipo==="entrada"?"+":"−"}${nf(m.cx)} cx</span></div>`).join("") : `<p class="note">Nenhuma movimentação ainda.</p>`}
+    </div>`;
+}
+
+function renderAll(){ renderSummary(); renderMarcas(); renderGrid(); renderMov(); renderRepor(); if (aberto) renderDrawer(); }
+
+/* ---------- navegação ---------- */
+function setView(v){
+  view = v;
+  document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.view === v));
+  ["catalogo","mov","repor"].forEach(k => $("#view-"+k).hidden = k !== v);
+}
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+$("#summary").addEventListener("click", e => { const t = e.target.closest("[data-go]"); if (!t) return; setStatusFilter(t.dataset.go); setView("catalogo"); });
+function setStatusFilter(s){ fStatus = s; document.querySelectorAll("#f-status .fchip").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === s)); renderGrid(); }
+$("#f-status").addEventListener("click", e => { const b = e.target.closest(".fchip"); if (b) setStatusFilter(b.dataset.s); });
+$("#f-tipo").addEventListener("click", e => { const b = e.target.closest(".fchip"); if (!b) return; fTipo = b.dataset.t; document.querySelectorAll("#f-tipo .fchip").forEach(x => x.setAttribute("aria-pressed", x === b)); renderMov(); });
+$("#q").addEventListener("input", e => { q = e.target.value; renderGrid(); });
+$("#f-marca").addEventListener("change", e => { fMarca = e.target.value; renderGrid(); });
+
+/* ---------- painel do produto ---------- */
+function openDrawer(id){ aberto = id; renderDrawer(); $("#drawer").classList.add("on"); $("#scrim").classList.add("on"); $("#drawer").setAttribute("aria-hidden","false"); $("#d-close").focus(); }
+function closeDrawer(){ aberto = null; $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on"); $("#drawer").setAttribute("aria-hidden","true"); }
+$("#grid").addEventListener("click", e => { const c = e.target.closest(".card"); if (c) openDrawer(+c.dataset.id); });
+$("#d-close").addEventListener("click", closeDrawer);
+$("#scrim").addEventListener("click", () => { if (!$("#modal").classList.contains("on")) closeDrawer(); });
+document.addEventListener("click", e => {
+  const en = e.target.closest("[data-entrada]"), sa = e.target.closest("[data-saida]");
+  if (en) openMov("entrada", +en.dataset.entrada);
+  if (sa) openMov("saida", +sa.dataset.saida);
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape"){ if ($("#modal").classList.contains("on")) closeModal(); else closeDrawer(); } });
+
+/* ---------- modal ---------- */
+function openModal(title, html, onSubmit, onInput){
+  $("#m-title").textContent = title;
+  const f = $("#m-form"); f.innerHTML = html;
+  f.onsubmit = e => { e.preventDefault(); onSubmit(f); };
+  f.oninput = onInput ? () => onInput(f) : null;
+  if (onInput) onInput(f);
+  $("#modal").classList.add("on"); $("#modal").setAttribute("aria-hidden","false");
+  setTimeout(() => { const first = f.querySelector("input,select"); first && first.focus(); }, 30);
+}
+function closeModal(){ $("#modal").classList.remove("on"); $("#modal").setAttribute("aria-hidden","true"); }
+$("#m-close").addEventListener("click", closeModal);
+$("#modal").addEventListener("click", e => { if (e.target.id === "modal") closeModal(); });
+document.addEventListener("click", e => { if (e.target.closest("[data-cancel]")) closeModal(); });
+
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 2600); }
+
+function openMov(tipo, id){
+  const p = prodById(id); const ent = tipo === "entrada";
+  openModal(ent ? "Registrar entrada" : "Registrar saída", `
+    <div class="mprod"><span class="sw" style="background-image:url(${textura(p)})"></span><div><b>${esc(p.nome)}</b><small>${esc(p.ref)} · tem ${nf(p.caixas)} cx · ${nf(p.m2cx,2)} m²/cx</small></div></div>
+    <div class="two">
+      <div class="field"><label for="mv-cx">Quantidade (caixas)</label><input id="mv-cx" name="cx" type="number" min="1" step="1" inputmode="numeric" required value="${ent ? Math.max(p.minimo*2-p.caixas, 10) : ""}"></div>
+      <div class="field"><label for="mv-data">Data</label><input id="mv-data" name="data" type="date" required value="${HOJE}"></div>
+    </div>
+    <div class="calc" id="mv-calc"></div>
+    <div class="field"><label for="mv-parte">${ent ? "Fornecedor / fábrica" : "Cliente (razão social)"}</label><input id="mv-parte" name="parte" required value="${ent ? esc(p.marca + " (fábrica)") : ""}" placeholder="${ent ? "" : "Ex.: Construtora Exemplo Ltda"}"></div>
+    <div class="two">
+      <div class="field"><label for="mv-doc">${ent ? "Nº do pedido" : "CNPJ do cliente"}</label><input id="mv-doc" name="doc" ${ent ? "" : 'inputmode="numeric" placeholder="00.000.000/0000-00"'}></div>
+      <div class="field"><label for="mv-nf">Nota fiscal</label><input id="mv-nf" name="nf" placeholder="Opcional"></div>
+    </div>
+    <div class="err" id="mv-err" role="alert"></div>
+    <div class="mfoot"><button type="button" class="btn" data-cancel>Cancelar</button><button class="btn ${ent?"in":"out"}" type="submit">${ent ? "Salvar entrada" : "Salvar saída"}</button></div>`,
+    f => {
+      const cx = parseInt(f.cx.value, 10), err = $("#mv-err");
+      if (!cx || cx < 1){ err.textContent = "Informe uma quantidade de caixas maior que zero."; return; }
+      if (!ent && cx > p.caixas){ err.textContent = `Só há ${p.caixas} caixas em estoque. Ajuste a quantidade ou registre uma entrada antes.`; return; }
+      if (!f.parte.value.trim()){ err.textContent = ent ? "Informe o fornecedor." : "Informe o cliente."; return; }
+      let doc = f.doc.value.trim();
+      if (!ent && doc) doc = "CNPJ " + doc; else if (ent && doc) doc = "Pedido " + doc;
+      mov.push({id: nextMov++, tipo, prod: p.id, cx, data: f.data.value || HOJE, parte: f.parte.value.trim(), doc: doc || "—", nf: f.nf.value.trim() ? (/^nf/i.test(f.nf.value.trim()) ? f.nf.value.trim() : "NF " + f.nf.value.trim()) : ""});
+      p.caixas += ent ? cx : -cx;
+      closeModal(); renderAll();
+      const s = status(p);
+      toast(`${ent ? "Entrada" : "Saída"} de ${cx} cx salva. ${p.nome}: ${p.caixas} cx${s==="ok"?"":" · "+STATUS_TXT[s].toLowerCase()}.`);
+    },
+    f => {
+      const cx = parseInt(f.cx.value, 10) || 0;
+      const depois = p.caixas + (ent ? cx : -cx);
+      $("#mv-calc").textContent = `${nf(cx)} cx = ${nf(cx*p.m2cx,2)} m² · estoque fica em ${nf(depois)} cx (${nf(Math.max(depois,0)*p.m2cx,1)} m²)`;
+      $("#mv-err").textContent = "";
+    });
+}
+
+$("#btn-novo").addEventListener("click", () => {
+  openModal("Novo produto", `
+    <div class="field"><label for="np-nome">Nome do produto</label><input id="np-nome" name="nome" required placeholder="Ex.: Travertino Romano"></div>
+    <div class="two">
+      <div class="field"><label for="np-marca">Marca / fábrica</label><input id="np-marca" name="marca" list="np-marcas" required><datalist id="np-marcas">${[...new Set(produtos.map(p=>p.marca))].map(m=>`<option value="${esc(m)}">`).join("")}</datalist></div>
+      <div class="field"><label for="np-ref">Referência</label><input id="np-ref" name="ref"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label for="np-formato">Formato</label><input id="np-formato" name="formato" placeholder="60×120 cm"></div>
+      <div class="field"><label for="np-acab">Acabamento</label><select id="np-acab" name="acab"><option>Polido</option><option>Acetinado</option><option>Natural</option><option>Antiderrapante</option><option>Brilhante</option></select></div>
+    </div>
+    <div class="two">
+      <div class="field"><label for="np-m2">m² por caixa</label><input id="np-m2" name="m2" type="number" step="0.01" min="0.01" required value="1.44"></div>
+      <div class="field"><label for="np-min">Estoque mínimo (cx)</label><input id="np-min" name="min" type="number" min="0" step="1" value="20"></div>
+    </div>
+    <div class="field"><label for="np-cx">Caixas que já tem</label><input id="np-cx" name="cx" type="number" min="0" step="1" value="0"></div>
+    <div class="field"><label for="np-foto">Foto da peça</label><input id="np-foto" name="foto" type="file" accept="image/*"></div>
+    <div class="err" id="np-err" role="alert"></div>
+    <div class="mfoot"><button type="button" class="btn" data-cancel>Cancelar</button><button class="btn primary" type="submit">Cadastrar</button></div>`,
+    async f => {
+      if (!f.nome.value.trim() || !f.marca.value.trim()){ $("#np-err").textContent = "Preencha o nome e a marca."; return; }
+      const m2 = parseFloat(String(f.m2.value).replace(",", "."));
+      if (!m2 || m2 <= 0){ $("#np-err").textContent = "Informe quantos m² vêm em cada caixa."; return; }
+      let foto = null; const file = f.foto.files && f.foto.files[0];
+      if (file) foto = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = () => res(null); rd.readAsDataURL(file); });
+      const p = {id: nextProd++, nome: f.nome.value.trim(), marca: f.marca.value.trim(), ref: f.ref.value.trim() || "—", formato: f.formato.value.trim() || "—", acabamento: f.acab.value, uso: "", textura: "liso", cores: ["#d9d5cd","#a7a196"], m2cx: m2, caixas: Math.max(0, parseInt(f.cx.value,10) || 0), minimo: Math.max(0, parseInt(f.min.value,10) || 0), local: "", foto};
+      produtos.unshift(p);
+      if (p.caixas) mov.push({id: nextMov++, tipo:"entrada", prod:p.id, cx:p.caixas, data:HOJE, parte:"Estoque inicial", doc:"Cadastro", nf:""});
+      closeModal(); setStatusFilter("todos"); renderAll(); toast(`${p.nome} cadastrado.`);
+    });
+});
+
+renderAll();
+})();
+</script>
+</body>
+</html>
